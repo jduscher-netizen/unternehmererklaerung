@@ -381,9 +381,15 @@ function requireVal(el, ok){
 async function fillTemplate(b64, fields, dropdownVal){
   const pdf = await PDFLib.PDFDocument.load(b64ToBytes(b64));
   const form = pdf.getForm();
-  for(const [k,v] of Object.entries(fields)) form.getTextField(k).setText(v);
+  for(const [k,v] of Object.entries(fields)){
+    const tf = form.getTextField(k);
+    tf.acroField.setDefaultAppearance("/Helv 11 Tf 0 g"); // feste Größe statt Auto-Skalierung — passend zum Formulartext
+    tf.setText(v);
+  }
   form.getCheckBox(CHECKBOX).check();
-  form.getDropdown("Dropdown1").select(dropdownVal);
+  const dd = form.getDropdown("Dropdown1");
+  dd.acroField.setDefaultAppearance("/Helv 11 Tf 0 g");
+  dd.select(dropdownVal);
   form.updateFieldAppearances();
   return await pdf.save();
 }
