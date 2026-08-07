@@ -1,0 +1,5 @@
+# Kundendaten und erzeugte PDFs nie einchecken
+*.pdf
+!Unternehmererklärung Fenster.pdf
+!Unternehmererklärung Haustüren.pdf
+!*_min.pdf

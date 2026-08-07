@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Schuler Unternehmererklärung</title>
+<meta name="description" content="Interne App: Unternehmererklärung § 96 GEG aus Rechnung erzeugen">
+<meta name="theme-color" content="#2e2d2c">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,100..1000&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<style>
+/* Design nach „Schuler Türen-Visualisierung" (CI: Rot #d22a3d, dunkel, DM Sans) */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{
+  background:#2e2d2c;color:#f5f4f2;
+  font-family:'DM Sans',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font-family:inherit;-webkit-tap-highlight-color:transparent}
+input::placeholder{color:#807d78}
+
+header.app{
+  height:72px;background:#242322;border-bottom:1px solid rgba(255,255,255,.1);
+  display:flex;align-items:center;padding:0 24px;gap:14px;
+}
+header.app .brand{font-weight:700;font-size:17px;letter-spacing:.2px}
+header.app .brand span{color:#a09d98;font-weight:600}
+
+.wrap{max-width:760px;margin:0 auto;padding:28px 20px 90px}
+
+.card{background:#363431;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:22px;margin-bottom:16px}
+
+.section-label{font-size:13px;font-weight:700;letter-spacing:2px;color:#e05a68;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.section-label svg{width:18px;height:18px;stroke:#e05a68}
+
+/* Dropzone */
+#drop{
+  border:2px dashed rgba(255,255,255,.18);border-radius:14px;background:#262524;
+  padding:52px 24px;text-align:center;cursor:pointer;transition:border-color .18s,background .18s;
+}
+#drop.hover{border-color:#d22a3d;background:rgba(210,42,61,.12)}
+#drop .ico{
+  width:46px;height:46px;border-radius:50%;background:rgba(210,42,61,.16);
+  display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;
+}
+#drop .ico svg{width:22px;height:22px;stroke:#e05a68}
+#drop .t1{font-weight:600;font-size:16px}
+#drop .t2{font-size:13px;color:#a09d98;margin-top:5px}
+#fileinput{display:none}
+#filename{display:none;margin-top:14px;font-size:13px;color:#a09d98}
+
+/* Erkennung */
+.detect{display:flex;flex-direction:column;gap:10px}
+.detect-row{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.45}
+.detect-row svg{width:18px;height:18px;flex-shrink:0;margin-top:2px}
+.detect-row.ok svg{stroke:#5abf8a}
+.detect-row.no svg{stroke:#807d78}
+.detect-row.no{color:#a09d98}
+.detect-row.warn svg{stroke:#e0a13d}
+.detect-row .why{color:#a09d98}
+
+/* Formular */
+label{display:block;font-size:12px;font-weight:700;color:#a09d98;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+input[type=text],select{
+  height:48px;padding:0 14px;border:1px solid rgba(255,255,255,.14);border-radius:12px;
+  font-size:16px;font-weight:500;color:#f5f4f2;background:#262524;outline:none;width:100%;
+  appearance:none;-webkit-appearance:none;
+}
+input[type=text]:focus,select:focus{border-color:#d22a3d}
+input.invalid,select.invalid{border-color:#d22a3d;background:rgba(210,42,61,.14)}
+select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a09d98' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:38px;
+}
+select option{background:#262524;color:#f5f4f2}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid .full{grid-column:1/-1}
+.hint{font-size:12px;color:#807d78;margin-top:5px}
+.hint.err{color:#ff8d9d}
+
+/* Karten-Header mit Toggle */
+.cardhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.cardhead .section-label{margin-bottom:0}
+.switch-btn{border:none;background:transparent;padding:0;cursor:pointer;display:flex}
+.switch{width:52px;height:32px;border-radius:999px;background:#4a4846;position:relative;transition:background .18s;flex:none}
+.switch:before{
+  content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;
+  border-radius:50%;background:#fff;transition:left .18s;box-shadow:0 1px 4px rgba(0,0,0,.35);
+}
+.switch.on{background:#d22a3d}
+.switch.on:before{left:23px}
+.card.off .cardbody{display:none}
+.card.off .section-label{color:#807d78}
+.card.off .section-label svg{stroke:#807d78}
+
+/* Buttons */
+.btn-primary{
+  width:100%;height:60px;border:none;border-radius:999px;background:#d22a3d;color:#fff;
+  font:700 17px 'DM Sans',sans-serif;cursor:pointer;transition:background .15s;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.btn-primary:hover{background:#c2173a}
+.btn-primary svg{width:19px;height:19px}
+.btn-ghost{
+  border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:12px 24px;
+  background:transparent;color:#c9c6c1;font:600 14px 'DM Sans',sans-serif;cursor:pointer;
+}
+.btn-ghost:hover{border-color:#fff;color:#fff}
+.generr{font-size:14px;color:#ff8d9d;text-align:center;margin-top:12px;min-height:18px}
+
+/* Ergebnis */
+#result{display:none}
+#result .files{display:flex;flex-direction:column;gap:10px}
+#result .file{
+  display:flex;align-items:center;gap:12px;padding:14px 16px;
+  background:#262524;border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:15px;font-weight:500;
+}
+#result .file svg{width:18px;height:18px;stroke:#5abf8a;flex-shrink:0}
+
+#step2,#step3{display:none}
+.footer-note{font-size:12px;color:#807d78;text-align:center;margin-top:28px;line-height:1.6}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="app">
+  <div class="brand">Unternehmererklärung <span>· Haustüren &amp; Fenster Schuler</span></div>
+</header>
+
+<div class="wrap">
+  <!-- Schritt 1: Upload -->
+  <div id="drop">
+    <div class="ico"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
+    <div class="t1">Rechnungs-PDF hier ablegen</div>
+    <div class="t2">oder tippen zum Auswählen — Daten werden automatisch ausgelesen</div>
+    <div id="filename"></div>
+  </div>
+  <input type="file" id="fileinput" accept="application/pdf">
+
+  <!-- Schritt 2: Erkennung + Daten -->
+  <div id="step2">
+    <div class="card" style="margin-top:16px">
+      <div class="section-label"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z"/></svg>Erkennung</div>
+      <div class="detect" id="detect"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-label"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>Bauherr</div>
+      <div class="grid">
+        <div class="full"><label for="f_name">Name</label><input type="text" id="f_name"></div>
+        <div><label for="f_strasse">Straße + Hausnummer</label><input type="text" id="f_strasse"></div>
+        <div><label for="f_ort">PLZ + Ort</label><input type="text" id="f_ort"></div>
+        <div><label for="f_datum">Rechnungsdatum</label><input type="text" id="f_datum" placeholder="TT.MM.JJJJ"></div>
+        <div><label for="f_nachname">Nachname (Dateiname)</label><input type="text" id="f_nachname"></div>
+      </div>
+    </div>
+
+    <div class="card" id="card_fenster">
+      <div class="cardhead">
+        <div class="section-label"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M12 3v18M4 12h16"/></svg>Fenster</div>
+        <button class="switch-btn" id="t_fenster" type="button" aria-label="Fenster-Erklärung erstellen"><span class="switch"></span></button>
+      </div>
+      <div class="cardbody">
+        <div class="grid">
+          <div><label for="f_uw">Uw-Wert W/(m²K)</label><input type="text" id="f_uw" placeholder="aus der Rechnung"><div class="hint" id="h_uw"></div></div>
+          <div><label for="f_mat_f">Rahmenmaterial</label>
+            <select id="f_mat_f"><option>Kunststoff</option><option>Aluminium</option><option>Holz</option></select></div>
+          <div><label for="f_bt_f">Bautiefe (mm)</label><input type="text" id="f_bt_f"></div>
+          <div><label for="f_ug">Ug Verglasung W/(m²K)</label><input type="text" id="f_ug"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="card_haustuer">
+      <div class="cardhead">
+        <div class="section-label"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 21h16M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M14.5 12.5v.01"/></svg>Haustür</div>
+        <button class="switch-btn" id="t_haustuer" type="button" aria-label="Haustür-Erklärung erstellen"><span class="switch"></span></button>
+      </div>
+      <div class="cardbody">
+        <div class="grid">
+          <div><label for="f_ud">Ud-Wert W/(m²K)</label><input type="text" id="f_ud" placeholder="z. B. 0,94"><div class="hint" id="h_ud"></div></div>
+          <div><label for="f_mat_h">Rahmenmaterial</label>
+            <select id="f_mat_h"><option value="">– wählen –</option><option>Kunststoff</option><option>Aluminium</option><option>Holz</option></select></div>
+          <div><label for="f_bt_h">Bautiefe (mm)</label><input type="text" id="f_bt_h" placeholder="z. B. 80"></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btn_generate">
+      <svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0 4-4m-4 4-4-4M4 20h16"/></svg>
+      PDF(s) erstellen &amp; herunterladen
+    </button>
+    <div class="generr" id="generr"></div>
+  </div>
+
+  <!-- Schritt 3: Ergebnis -->
+  <div id="step3">
+    <div class="card" id="result">
+      <div class="section-label"><svg fill="none" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></svg>Erstellt</div>
+      <div class="files" id="resultfiles"></div>
+    </div>
+    <div style="text-align:center;margin-top:8px"><button class="btn-ghost" id="btn_reset">Neue Rechnung verarbeiten</button></div>
+  </div>
+
+  <p class="footer-note">Verarbeitung vollständig lokal im Browser · es werden keine Daten übertragen<br>Vorlagen § 96 GEG (Fenster + Haustür) sind in der App hinterlegt</p>
+</div>
+
+<script>
+/* ==== eingebettete Vorlagen (base64) ==== */
+const TPL_FENSTER = "__TPL_FENSTER__";
+const TPL_HAUSTUER = "__TPL_HAUSTUER__";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const CHECKBOX = "Gegen Außenluft abgrenzende Fenster und Fenstertüren Ersatz oder erstmaliger Einbau des";
+const $ = id => document.getElementById(id);
+let parsed = null;
+
+/* ---------- PDF-Text zeilenweise extrahieren ---------- */
+async function extractLines(data){
+  const doc = await pdfjsLib.getDocument({data}).promise;
+  const pages = [];
+  for(let i=1;i<=doc.numPages;i++){
+    const page = await doc.getPage(i);
+    const tc = await page.getTextContent();
+    // Items nach y gruppieren (Toleranz 2.5), innerhalb der Zeile nach x sortieren
+    const rows = [];
+    for(const it of tc.items){
+      if(!it.str.trim()) continue;
+      const y = it.transform[5], x = it.transform[4];
+      let row = rows.find(r => Math.abs(r.y - y) < 2.5);
+      if(!row){ row = {y, items:[]}; rows.push(row); }
+      row.items.push({x, str: it.str});
+    }
+    rows.sort((a,b)=>b.y-a.y);
+    const lines = rows.map(r => r.items.sort((a,b)=>a.x-b.x).map(i=>i.str).join(" ").replace(/\s+/g," ").trim());
+    pages.push(lines);
+  }
+  return pages;
+}
+
+/* ---------- Daten aus der Rechnung ziehen ---------- */
+function parseInvoice(pages){
+  const p1 = pages[0] || [];
+  const all = pages.flat();
+  const text = all.join("\n");
+  const out = {name:"", strasse:"", ort:"", datum:"", nr:"", uw:"", ud:"",
+               fenster:false, haustuer:false, whyF:"", whyH:""};
+
+  /* Adressblock: beginnt mit Anrede, endet bei DEUTSCHLAND/Kommission */
+  const anrede = /^(Herrn|Frau|Familie|Firma|Eheleute)\b/;
+  const start = p1.findIndex(l => anrede.test(l));
+  if(start >= 0){
+    const block = [];
+    for(let i=start;i<p1.length;i++){
+      let l = p1[i];
+      if(/DEUTSCHLAND|Kommission/.test(l)) break;
+      // rechte Spalte abschneiden
+      l = l.replace(/\s*(Nr\.:|Datum:|Kundennummer:|Vorbeleg:).*$/,"").trim();
+      if(i === start){ // Anrede-Zeile: evtl. steht der Name dahinter
+        const rest = l.replace(anrede,"").trim();
+        if(rest) block.push(rest);
+        continue;
+      }
+      if(l) block.push(l);
+    }
+    if(block.length){
+      out.name = block[0];
+      const plz = block.find((l,i)=>i>0 && /^\d{5}\s/.test(l));
+      if(plz) out.ort = plz;
+      const rest = block.filter((l,i)=>i>0 && l!==plz);
+      if(rest.length) out.strasse = rest[0];
+    }
+  }
+
+  const mD = text.match(/Datum:\s*(\d{2}\.\d{2}\.\d{4})/);   if(mD) out.datum = mD[1];
+  const mN = text.match(/Nr\.:\s*([\d\/]+)/);                 if(mN) out.nr = mN[1];
+  const mUw = text.match(/Uw von\s*([\d,\.]+)\s*W/);          if(mUw) out.uw = mUw[1];
+  const mUd = text.match(/Ud von\s*([\d,\.]+)\s*W/);          if(mUd) out.ud = mUd[1];
+
+  /* Erkennung Fenster */
+  const elemCount = (text.match(/Element\s+\d+\s*-\s*tlg|Element\s+\d+-tlg/gi)||[]).length;
+  if(out.uw){ out.fenster = true; out.whyF = `Uw-Wert ${out.uw} in der Rechnung gefunden`; }
+  else if(elemCount > 0){ out.fenster = true; out.whyF = `${elemCount} Fensterelement${elemCount>1?"e":""} („Element x-tlg.") in den Positionen`; }
+  else if(/alten Fenster|Fenstertür/i.test(text)){ out.fenster = true; out.whyF = "Fenster-Demontage bzw. Fenstertüren in den Positionen"; }
+
+  /* Erkennung Haustür — Kommissions-/Fußzeilen ausklammern */
+  const tuerLines = all.filter(l =>
+    /Haustür|Außentür/i.test(l) &&
+    !/Kommission|Haustüren\s*&\s*Fenster Schuler/i.test(l));
+  if(out.ud){ out.haustuer = true; out.whyH = `Ud-Wert ${out.ud} in der Rechnung gefunden`; }
+  else if(tuerLines.length){
+    out.haustuer = true;
+    const pos = tuerLines.find(l=>/^Pos\./.test(l)) || tuerLines[0];
+    out.whyH = `Position erkannt: „${pos.length>60 ? pos.slice(0,60)+"…" : pos}"`;
+  }
+
+  /* Nachname: letztes Wort des Namens */
+  const words = out.name.replace(/[.,]$/,"").split(/\s+/);
+  out.nachname = words.length ? words[words.length-1] : "";
+  return out;
+}
+
+/* ---------- UI ---------- */
+const drop = $("drop"), fi = $("fileinput");
+drop.addEventListener("click", ()=>fi.click());
+drop.addEventListener("dragover", e=>{e.preventDefault();drop.classList.add("hover");});
+drop.addEventListener("dragleave", ()=>drop.classList.remove("hover"));
+drop.addEventListener("drop", e=>{e.preventDefault();drop.classList.remove("hover");
+  if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);});
+fi.addEventListener("change", ()=>{ if(fi.files[0]) handleFile(fi.files[0]); });
+
+async function handleFile(file){
+  $("filename").style.display="block";
+  $("filename").textContent = "Lese „"+file.name+"“ …";
+  try{
+    const buf = await file.arrayBuffer();
+    const pages = await extractLines(new Uint8Array(buf));
+    parsed = parseInvoice(pages);
+    $("filename").textContent = file.name + (parsed.nr ? " · Rechnung "+parsed.nr : "");
+    fillForm(parsed);
+  }catch(err){
+    $("filename").textContent = "Fehler beim Lesen: "+err.message;
+  }
+}
+
+function detectRow(cls, icon, txt, why){
+  return `<div class="detect-row ${cls}">${icon}<div>${txt}${why?` <span class="why">— ${why}</span>`:""}</div></div>`;
+}
+const ICON_OK = `<svg fill="none" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></svg>`;
+const ICON_NO = `<svg fill="none" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 6 6 18M6 6l12 12"/></svg>`;
+const ICON_WARN = `<svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>`;
+
+function fillForm(p){
+  let html = "";
+  html += p.fenster ? detectRow("ok",ICON_OK,"<b>Fenster-Erklärung</b>",p.whyF)
+                    : detectRow("no",ICON_NO,"Keine Fenster erkannt","bei Bedarf manuell aktivieren");
+  html += p.haustuer ? detectRow("ok",ICON_OK,"<b>Haustür-Erklärung</b>",p.whyH)
+                     : detectRow("no",ICON_NO,"Keine Haustür erkannt","bei Bedarf manuell aktivieren");
+  if(p.fenster && !p.uw) html += detectRow("warn",ICON_WARN,"Kein Uw-Wert in der Rechnung","bitte unten eintragen (wird nie geschätzt)");
+  if(p.haustuer && !p.ud) html += detectRow("warn",ICON_WARN,"Kein Ud-Wert in der Rechnung","bitte unten eintragen");
+  $("detect").innerHTML = html;
+
+  $("f_name").value = p.name; $("f_strasse").value = p.strasse; $("f_ort").value = p.ort;
+  $("f_datum").value = p.datum; $("f_nachname").value = p.nachname;
+  setToggle("t_fenster", p.fenster); setToggle("t_haustuer", p.haustuer);
+  $("f_uw").value = p.uw; $("h_uw").textContent = p.uw ? "aus der Rechnung übernommen" : "Pflichtfeld — steht nicht in der Rechnung";
+  $("f_mat_f").value = "Kunststoff"; $("f_bt_f").value = "83"; $("f_ug").value = "0,6";
+  $("f_ud").value = p.ud; $("h_ud").textContent = p.ud ? "aus der Rechnung übernommen" : "Pflichtfeld — steht nicht in der Rechnung";
+  $("f_mat_h").value = ""; $("f_bt_h").value = "";
+  syncCards();
+  $("step2").style.display="block"; $("step3").style.display="none"; $("result").style.display="none";
+  $("step2").scrollIntoView({behavior:"smooth"});
+}
+
+/* Toggles (Button + .switch.on wie in der Türen-Visualisierung) */
+function getToggle(id){ return $(id).querySelector(".switch").classList.contains("on"); }
+function setToggle(id, on){ $(id).querySelector(".switch").classList.toggle("on", on); }
+function syncCards(){
+  $("card_fenster").classList.toggle("off", !getToggle("t_fenster"));
+  $("card_haustuer").classList.toggle("off", !getToggle("t_haustuer"));
+}
+$("t_fenster").addEventListener("click", ()=>{ setToggle("t_fenster", !getToggle("t_fenster")); syncCards(); });
+$("t_haustuer").addEventListener("click", ()=>{ setToggle("t_haustuer", !getToggle("t_haustuer")); syncCards(); });
+
+/* ---------- Validierung + Erzeugung ---------- */
+function b64ToBytes(b64){
+  const bin = atob(b64); const arr = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+
+function requireVal(el, ok){
+  el.classList.toggle("invalid", !ok);
+  return ok;
+}
+
+async function fillTemplate(b64, fields, dropdownVal){
+  const pdf = await PDFLib.PDFDocument.load(b64ToBytes(b64));
+  const form = pdf.getForm();
+  for(const [k,v] of Object.entries(fields)) form.getTextField(k).setText(v);
+  form.getCheckBox(CHECKBOX).check();
+  form.getDropdown("Dropdown1").select(dropdownVal);
+  form.updateFieldAppearances();
+  return await pdf.save();
+}
+
+function download(bytes, name){
+  const url = URL.createObjectURL(new Blob([bytes], {type:"application/pdf"}));
+  const a = document.createElement("a");
+  a.href = url; a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+}
+
+$("btn_generate").addEventListener("click", async ()=>{
+  $("generr").textContent = "";
+  const wantF = getToggle("t_fenster"), wantH = getToggle("t_haustuer");
+  if(!wantF && !wantH){ $("generr").textContent = "Mindestens eine Erklärung aktivieren."; return; }
+
+  let ok = true;
+  ok = requireVal($("f_name"), !!$("f_name").value.trim()) && ok;
+  ok = requireVal($("f_strasse"), !!$("f_strasse").value.trim()) && ok;
+  ok = requireVal($("f_ort"), !!$("f_ort").value.trim()) && ok;
+  ok = requireVal($("f_datum"), /^\d{2}\.\d{2}\.\d{4}$/.test($("f_datum").value.trim())) && ok;
+  ok = requireVal($("f_nachname"), !!$("f_nachname").value.trim()) && ok;
+  if(wantF) ok = requireVal($("f_uw"), !!$("f_uw").value.trim()) && ok;
+  if(wantH){
+    ok = requireVal($("f_ud"), !!$("f_ud").value.trim()) && ok;
+    ok = requireVal($("f_mat_h"), !!$("f_mat_h").value) && ok;
+    ok = requireVal($("f_bt_h"), !!$("f_bt_h").value.trim()) && ok;
+  }
+  if(!ok){ $("generr").textContent = "Bitte markierte Felder ausfüllen."; return; }
+
+  const common = {
+    "Objektadresse": $("f_name").value.trim(),
+    "1": $("f_strasse").value.trim(),
+    "2": $("f_ort").value.trim(),
+    "Datum1_af_date": $("f_datum").value.trim(),
+  };
+  const nn = $("f_nachname").value.trim();
+  const made = [];
+  try{
+    if(wantF){
+      const bytes = await fillTemplate(TPL_FENSTER, {...common,
+        "U-Wert": $("f_uw").value.trim(), "Bautiefe": $("f_bt_f").value.trim(), "Ud-Wert": $("f_ug").value.trim(),
+      }, $("f_mat_f").value);
+      const name = `Unternehmererklärung_Fenster_${nn}.pdf`;
+      download(bytes, name); made.push(name);
+    }
+    if(wantH){
+      const bytes = await fillTemplate(TPL_HAUSTUER, {...common,
+        "Kunststoff": $("f_ud").value.trim(), "Kunststoffsss": $("f_bt_h").value.trim(),
+      }, $("f_mat_h").value);
+      const name = `Unternehmererklärung_Haustür_${nn}.pdf`;
+      download(bytes, name); made.push(name);
+    }
+  }catch(err){
+    $("generr").textContent = "Fehler beim Erzeugen: "+err.message; return;
+  }
+  const ICON_F = `<svg fill="none" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></svg>`;
+  $("resultfiles").innerHTML = made.map(n=>`<div class="file">${ICON_F}${n}</div>`).join("");
+  $("result").style.display="block"; $("step3").style.display="block";
+  $("step3").scrollIntoView({behavior:"smooth"});
+});
+
+$("btn_reset").addEventListener("click", ()=>{
+  parsed = null; fi.value = "";
+  $("step2").style.display="none"; $("step3").style.display="none";
+  $("filename").style.display="none";
+  window.scrollTo({top:0,behavior:"smooth"});
+});
+</script>
+</body>
+</html>
