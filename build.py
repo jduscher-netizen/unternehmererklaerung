@@ -36,3 +36,10 @@ for placeholder, stem in TEMPLATES.items():
 out = os.path.join(HERE, "index.html")
 open(out, "w", encoding="utf-8").write(html)
 print(f"index.html geschrieben ({os.path.getsize(out)/1e6:.2f} MB)")
+
+# Kopie nach dist/ (Deploy-Ordner: enthält nur die index.html, Cloudflare Pages liefert diesen aus)
+dist = os.path.join(HERE, "dist")
+os.makedirs(dist, exist_ok=True)
+import shutil
+shutil.copyfile(out, os.path.join(dist, "index.html"))
+print("dist/index.html aktualisiert")
