@@ -223,21 +223,27 @@ let parsed = null;
 async function extractLines(data){
   const doc = await pdfjsLib.getDocument({data}).promise;
   const pages = [];
+  const toLines = items => {
+    // Items nach y gruppieren (Toleranz 2.5), innerhalb der Zeile nach x sortieren
+    const rows = [];
+    for(const it of items){
+      let row = rows.find(r => Math.abs(r.y - it.y) < 2.5);
+      if(!row){ row = {y: it.y, items:[]}; rows.push(row); }
+      row.items.push(it);
+    }
+    rows.sort((a,b)=>b.y-a.y);
+    return rows.map(r => r.items.sort((a,b)=>a.x-b.x).map(i=>i.str).join(" ").replace(/\s+/g," ").trim()).filter(Boolean);
+  };
   for(let i=1;i<=doc.numPages;i++){
     const page = await doc.getPage(i);
     const tc = await page.getTextContent();
-    // Items nach y gruppieren (Toleranz 2.5), innerhalb der Zeile nach x sortieren
-    const rows = [];
-    for(const it of tc.items){
-      if(!it.str.trim()) continue;
-      const y = it.transform[5], x = it.transform[4];
-      let row = rows.find(r => Math.abs(r.y - y) < 2.5);
-      if(!row){ row = {y, items:[]}; rows.push(row); }
-      row.items.push({x, str: it.str});
+    const items = tc.items.filter(it => it.str.trim()).map(it => ({x: it.transform[4], y: it.transform[5], str: it.str}));
+    pages.push(toLines(items));
+    if(i === 1){
+      // Nur linke Seitenhälfte, obere Hälfte: Adressfeld ohne rechte Spalte (Nr., Datum, Kundennummer)
+      const {width, height} = page.getViewport({scale:1});
+      pages.left1 = toLines(items.filter(it => it.x < width*0.5 && it.y > height*0.45));
     }
-    rows.sort((a,b)=>b.y-a.y);
-    const lines = rows.map(r => r.items.sort((a,b)=>a.x-b.x).map(i=>i.str).join(" ").replace(/\s+/g," ").trim());
-    pages.push(lines);
   }
   return pages;
 }
@@ -250,30 +256,44 @@ function parseInvoice(pages){
   const out = {name:"", strasse:"", ort:"", datum:"", nr:"", uw:"", ud:"",
                fenster:false, haustuer:false, whyF:"", whyH:""};
 
-  /* Adressblock: beginnt mit Anrede, endet bei DEUTSCHLAND/Kommission */
-  const anrede = /^(Herrn|Frau|Familie|Firma|Eheleute)\b/;
-  const start = p1.findIndex(l => anrede.test(l));
-  if(start >= 0){
-    const block = [];
-    for(let i=start;i<p1.length;i++){
-      let l = p1[i];
-      if(/DEUTSCHLAND|Kommission/.test(l)) break;
-      // rechte Spalte abschneiden
-      l = l.replace(/\s*(Nr\.:|Datum:|Kundennummer:|Vorbeleg:).*$/,"").trim();
-      if(i === start){ // Anrede-Zeile: evtl. steht der Name dahinter
-        const rest = l.replace(anrede,"").trim();
-        if(rest) block.push(rest);
-        continue;
+  /* Adressblock aus der linken Spalte: Anrede optional, Ende bei PLZ-Zeile/DEUTSCHLAND/Kommission */
+  const anrede = /^(Herrn?|Frau|Familie|Fam\.|Firma|Eheleute|Herr und Frau|Hr\.|Fr\.)\b\.?\s*/i;
+  const plzRe = /^(D[-\s]?)?\d{5}\s+\S/;
+  const absender = /Schuler|Pfaffenpfad|·/i;
+  const rechts = /\s*(Nr\.:|Datum:|Kundennummer:|Vorbeleg:|RECHNUNG\b).*$/;
+  const left = (pages.left1 || p1).map(l => l.replace(rechts,"").trim()).filter(Boolean);
+
+  let block = [];
+  const aStart = left.findIndex(l => anrede.test(l) && !absender.test(l));
+  if(aStart >= 0){
+    for(let i=aStart;i<left.length && block.length<6;i++){
+      const l = left[i];
+      if(/^DEUTSCHLAND$|^Kommission/i.test(l)) break;
+      block.push(l);
+      if(plzRe.test(l)) break;
+    }
+  }
+  if(!block.some(l => plzRe.test(l))){
+    // Ohne Anrede: erste PLZ-Zeile (nicht Absender), davor Straße und Name
+    block = [];
+    const pi = left.findIndex(l => plzRe.test(l) && !absender.test(l));
+    if(pi >= 0){
+      for(let j=pi-1;j>=0 && block.length<3;j--){
+        if(absender.test(left[j]) || /^DEUTSCHLAND$|^Kommission/i.test(left[j])) break;
+        block.unshift(left[j]);
       }
-      if(l) block.push(l);
+      block.push(left[pi]);
     }
-    if(block.length){
-      out.name = block[0];
-      const plz = block.find((l,i)=>i>0 && /^\d{5}\s/.test(l));
-      if(plz) out.ort = plz;
-      const rest = block.filter((l,i)=>i>0 && l!==plz);
-      if(rest.length) out.strasse = rest[0];
-    }
+  }
+  const zeilen = block.map(l => l.replace(anrede,"").trim()).filter(l => l && !/^(z\.?\s?Hd\.?|c\/o)/i.test(l));
+  const pIdx = zeilen.findIndex(l => plzRe.test(l));
+  if(pIdx >= 0){
+    out.ort = zeilen[pIdx].replace(/^D[-\s]?/,"");
+    const vor = zeilen.slice(0,pIdx);
+    if(vor.length > 1){ out.strasse = vor[vor.length-1]; out.name = vor.slice(0,-1).join(" "); }
+    else if(vor.length === 1){ out.name = vor[0]; }
+  } else if(zeilen.length){
+    out.name = zeilen[0]; if(zeilen[1]) out.strasse = zeilen[1];
   }
 
   const mD = text.match(/Datum:\s*(\d{2}\.\d{2}\.\d{4})/);   if(mD) out.datum = mD[1];
