@@ -68,9 +68,12 @@
   function lesen(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function schreiben(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* ohne Speicher gilt die Wahl bis zum Neuladen */ } }
   var aktuelleWahl = null;
+  // Verkaufs-Apps (Werbebildschirm) bleiben immer hell: vor dem Laden window.SCHULER_UI_NUR_HELL = true setzen
+  var NUR_HELL = !!window.SCHULER_UI_NUR_HELL;
   var darstellung = {
     /** 'geraet' | 'hell' | 'dunkel' */
     wahl: function () {
+      if (NUR_HELL) return 'hell';
       if (aktuelleWahl) return aktuelleWahl;
       var v = lesen(SCHLUESSEL);
       return v === 'hell' || v === 'dunkel' ? v : 'geraet';
@@ -161,6 +164,7 @@
   }
 
   function segmentZeichnen(seg) {
+    if (!seg) return;
     var w = darstellung.wahl();
     Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-wahl') === w)); });
   }
@@ -179,18 +183,20 @@
     var eintraege = (optionen.eintraege || []).map(function (e, i) {
       return '<button type="button" class="sui-mp" data-sui-eintrag="' + i + '">' + (e.html || ((e.symbol ? icon(e.symbol) : '') + esc(e.text))) + '</button>';
     }).join('');
+    // Abschnitte des Menüs, getrennt durch Linien
+    var teile = [
+      name ? '<div class="sui-wer"><b>' + esc(name) + '</b>' + (optionen.rolle ? '<span>' + esc(optionen.rolle) + '</span>' : '') + '</div>' : '',
+      NUR_HELL ? '' : '<div class="sui-dar"><span class="sui-lbl">Darstellung</span><div class="sui-seg">' +
+        '<button type="button" data-wahl="geraet">' + icon('geraet') + 'Gerät</button>' +
+        '<button type="button" data-wahl="hell">' + icon('sonne') + 'Hell</button>' +
+        '<button type="button" data-wahl="dunkel">' + icon('mond') + 'Dunkel</button>' +
+      '</div></div>',
+      eintraege,
+      optionen.abmelden ? '<button type="button" class="sui-mp" data-sui-abmelden>' + icon('abmelden') + 'Abmelden</button>' : '',
+      optionen.version ? '<div class="sui-ver">' + esc(optionen.version) + '</div>' : ''
+    ].filter(Boolean);
     var anker = el('<div class="sui-anker">' + knopfHtml +
-      '<div class="sui-pop sui-menue sui-rechts' + (optionen.leiste ? ' sui-hoch' : '') + '" role="menu" hidden>' +
-        (name ? '<div class="sui-wer"><b>' + esc(name) + '</b>' + (optionen.rolle ? '<span>' + esc(optionen.rolle) + '</span>' : '') + '</div><hr>' : '') +
-        '<div class="sui-dar"><span class="sui-lbl">Darstellung</span><div class="sui-seg">' +
-          '<button type="button" data-wahl="geraet">' + icon('geraet') + 'Gerät</button>' +
-          '<button type="button" data-wahl="hell">' + icon('sonne') + 'Hell</button>' +
-          '<button type="button" data-wahl="dunkel">' + icon('mond') + 'Dunkel</button>' +
-        '</div></div>' +
-        (eintraege ? '<hr>' + eintraege : '') +
-        (optionen.abmelden ? '<hr><button type="button" class="sui-mp" data-sui-abmelden>' + icon('abmelden') + 'Abmelden</button>' : '') +
-        (optionen.version ? '<hr><div class="sui-ver">' + esc(optionen.version) + '</div>' : '') +
-      '</div></div>');
+      '<div class="sui-pop sui-menue sui-rechts' + (optionen.leiste ? ' sui-hoch' : '') + '" role="menu" hidden>' + teile.join('<hr>') + '</div></div>');
     var knopf = anker.querySelector('button'), pop = anker.querySelector('.sui-pop'), seg = anker.querySelector('.sui-seg');
     segmentZeichnen(seg);
     // Apps, die ihre Kopfzeile neu zeichnen, hinterlassen sonst je Bild einen Zuhörer
