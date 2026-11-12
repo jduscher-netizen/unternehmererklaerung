@@ -43,3 +43,9 @@ os.makedirs(dist, exist_ok=True)
 import shutil
 shutil.copyfile(out, os.path.join(dist, "index.html"))
 print("dist/index.html aktualisiert")
+
+# Gemeinsame Oberfläche der Schuler-Apps (Kopfzeile, Anmeldung, Darstellung), Quelle ~/Documents/Claude/schuler-ui
+sui = os.path.join(HERE, "schuler-ui")
+if os.path.isdir(sui):
+    shutil.copytree(sui, os.path.join(dist, "schuler-ui"), dirs_exist_ok=True)
+    print("dist/schuler-ui aktualisiert")
