@@ -136,6 +136,10 @@
 
 @media print { .sui-kopf, .sui-pop, .sui-leiste-ende { display: none !important; } }
 
-/* Oberkante in der Home-Bildschirm-App (siehe schuler-ui.js): schaltet den Weichzeichner von iPadOS ab */
+/* Oberkante in der Home-Bildschirm-App (siehe schuler-ui.js): schaltet den Weichzeichner von iPadOS ab.
+   Der Streifen liegt über der Seite. Jede App nimmt var(--sui-oben) statt env(safe-area-inset-top) als Abstand oben,
+   sonst verdeckt er die obersten 16 px der Kopfzeile (Statusleiste „default“: Inset 0, Streifen trotzdem 16 px). */
+:root { --sui-oben: env(safe-area-inset-top, 0px); }
+:root.sui-mit-oberkante { --sui-oben: max(16px, env(safe-area-inset-top, 0px)); }
 .sui-oberkante { position: fixed; top: 0; left: 0; right: 0; height: max(16px, env(safe-area-inset-top, 0px)); background: var(--sui-bg); z-index: 2147483000; pointer-events: none; }
 @media print { .sui-oberkante { display: none !important; } }

@@ -278,6 +278,8 @@
     streifen.className = 'sui-oberkante';
     streifen.setAttribute('aria-hidden', 'true');
     document.body.appendChild(streifen);
+    // Der Streifen liegt über der Seite: Apps rücken ihre Kopfzeile um var(--sui-oben) nach unten
+    document.documentElement.classList.add('sui-mit-oberkante');
     var geplant = false;
     function faerben() {
       geplant = false;

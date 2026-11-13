@@ -28,7 +28,7 @@ button,input,select{font-family:inherit;-webkit-tap-highlight-color:transparent}
 input::placeholder{color:var(--sui-fg-3)}
 /* Kopfzeile steht fest, nur der Inhalt scrollt (sonst federt die Seite im iPad-Vollbild mit) */
 html,body{overscroll-behavior:none}
-#app{position:fixed;inset:0;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);background:var(--sui-bg)}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;padding-top:var(--sui-oben,env(safe-area-inset-top,0px));background:var(--sui-bg)}
 #app > .sui-kopf{flex:none;z-index:10}
 #app > .wrap-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:var(--sui-bg-subtle);padding-bottom:env(safe-area-inset-bottom,0px)}
 
