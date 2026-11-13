@@ -242,5 +242,59 @@
     return Promise.resolve().then(aufgabe).finally(function () { knopf.disabled = false; knopf.removeAttribute('aria-busy'); });
   }
 
+  /* ── Oberkante in der Home-Bildschirm-App ──
+     iPadOS legt dort einen Weichzeichner über den oberen Rand; Logo und Kopfzeile wirken darunter
+     verwischt. Eine fest positionierte, volle Fläche an der Oberkante (mind. 16 px, 4 px reichen nicht)
+     schaltet ihn ab, ihre Farbe übernimmt iPadOS in die Statusleiste. Am Gerät bestätigt in der
+     Haustür-Aktion (.sysbar-fix). Die Farbe wird von dem genommen, was an der Kante zu sehen ist,
+     damit der Streifen nicht auffällt (Kopfzeile, Anmeldeseite, abgedunkelter Hintergrund). */
+  function farbeZerlegen(c) {
+    var m = /rgba?\(([^)]+)\)/.exec(c || '');
+    if (!m) return null;
+    var t = m[1].split(/[\s,\/]+/).filter(Boolean).map(parseFloat);
+    return { r: t[0], g: t[1], b: t[2], a: t.length > 3 ? t[3] : 1 };
+  }
+  function kantenfarbe(streifen) {
+    var x = Math.round(window.innerWidth / 2), y = 8;
+    var liste = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
+    var r = 0, g = 0, b = 0, rest = 1;   // von oben nach unten mischen, bis die Fläche deckt
+    for (var i = 0; i < liste.length && rest > 0.01; i++) {
+      if (liste[i] === streifen) continue;
+      var f = farbeZerlegen(getComputedStyle(liste[i]).backgroundColor);
+      if (!f || f.a === 0) continue;
+      r += rest * f.a * f.r; g += rest * f.a * f.g; b += rest * f.a * f.b; rest *= 1 - f.a;
+    }
+    if (rest > 0.01) {   // nichts Deckendes gefunden: Grundfarbe der Seite (#0f1013 bzw. #ffffff)
+      var grund = darstellung.istDunkel() ? [15, 16, 19] : [255, 255, 255];
+      r += rest * grund[0]; g += rest * grund[1]; b += rest * grund[2];
+    }
+    // Schreibweise wie im Browser („rgb(1, 2, 3)“), damit der Vergleich in faerben() greift
+    return 'rgb(' + Math.round(r) + ', ' + Math.round(g) + ', ' + Math.round(b) + ')';
+  }
+  function oberkanteEinrichten() {
+    var standalone = window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    if (!standalone || document.querySelector('.sysbar-fix')) return;   // Programm und Aktion haben eine eigene
+    var streifen = document.createElement('div');
+    streifen.className = 'sui-oberkante';
+    streifen.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(streifen);
+    var geplant = false;
+    function faerben() {
+      geplant = false;
+      var f = kantenfarbe(streifen);
+      if (streifen.style.backgroundColor !== f) streifen.style.backgroundColor = f;
+    }
+    function planen() { if (!geplant) { geplant = true; requestAnimationFrame(faerben); } }
+    faerben();
+    new MutationObserver(planen).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+    new MutationObserver(planen).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style', 'class'] });
+    // Farbwechsel laufen teils mit Übergang: nach dessen Ende noch einmal nachsehen
+    document.addEventListener('schuler-darstellung', function () { planen(); setTimeout(planen, 400); });
+    window.addEventListener('resize', planen);
+    document.addEventListener('transitionend', planen, true);
+    document.addEventListener('scroll', planen, { capture: true, passive: true });
+  }
+  if (document.body) oberkanteEinrichten(); else document.addEventListener('DOMContentLoaded', oberkanteEinrichten);
+
   window.SchulerUI = { APPS: APPS, icon: icon, darstellung: darstellung, appKnopf: appKnopf, appsLeistenKnopf: appsLeistenKnopf, kontoKnopf: kontoKnopf, logo: logo, schliessen: schliessen, einmal: einmal, basis: BASIS };
 })();

@@ -135,3 +135,7 @@
 .sui-anmeldung .sui-fehler { margin: 0; padding: 8px 12px; border-radius: var(--sui-r-2); background: var(--sui-danger-bg); color: var(--sui-danger); }
 
 @media print { .sui-kopf, .sui-pop, .sui-leiste-ende { display: none !important; } }
+
+/* Oberkante in der Home-Bildschirm-App (siehe schuler-ui.js): schaltet den Weichzeichner von iPadOS ab */
+.sui-oberkante { position: fixed; top: 0; left: 0; right: 0; height: max(16px, env(safe-area-inset-top, 0px)); background: var(--sui-bg); z-index: 2147483000; pointer-events: none; }
+@media print { .sui-oberkante { display: none !important; } }
