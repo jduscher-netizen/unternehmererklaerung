@@ -64,7 +64,8 @@
 /* App-Name: öffnet den App-Wechsel */
 .sui-app { display: flex; align-items: center; gap: 4px; height: var(--sui-control); padding: 0 8px; margin: 0 -8px; border: 0; border-radius: var(--sui-r-2); background: transparent; color: var(--sui-fg); font: 600 var(--sui-fs-17) / 1 var(--sui-f-text); white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .sui-app > .sui-ic { color: var(--sui-fg-3); width: 16px; height: 16px; }
-.sui-app[aria-expanded='true'], .sui-app:hover { background: var(--sui-bg-muted); }
+.sui-app[aria-expanded='true'], button.sui-app:hover { background: var(--sui-bg-muted); }
+.sui-app-titel { cursor: default; overflow: hidden; text-overflow: ellipsis; }
 
 /* Name des Benutzers: öffnet das Konto-Menü */
 .sui-konto { display: flex; align-items: center; gap: 8px; height: var(--sui-control); padding: 0 8px; border: 0; border-radius: var(--sui-r-2); background: transparent; color: var(--sui-fg-2); font: 500 var(--sui-fs-15) / 1 var(--sui-f-text); white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }

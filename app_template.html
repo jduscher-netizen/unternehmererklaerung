@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Schuler Unternehmererklärung</title>
 <meta name="description" content="Interne App: Unternehmererklärung § 96 GEG aus Rechnung erzeugen">
 <meta name="theme-color" content="#ffffff">
@@ -26,7 +26,11 @@ body{
 button,input,select{font-family:inherit;-webkit-tap-highlight-color:transparent}
 .hidden{display:none!important}
 input::placeholder{color:var(--sui-fg-3)}
-#app > .sui-kopf{position:sticky;top:0;z-index:10}
+/* Kopfzeile steht fest, nur der Inhalt scrollt (sonst federt die Seite im iPad-Vollbild mit) */
+html,body{overscroll-behavior:none}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);background:var(--sui-bg)}
+#app > .sui-kopf{flex:none;z-index:10}
+#app > .wrap-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:var(--sui-bg-subtle);padding-bottom:env(safe-area-inset-bottom,0px)}
 
 .wrap{max-width:760px;margin:0 auto;padding:24px 20px 80px}
 
@@ -135,6 +139,7 @@ select{
 <div id="app" class="hidden">
 <header class="sui-kopf" id="kopf"></header>
 
+<div class="wrap-scroll">
 <div class="wrap">
   <!-- Schritt 1: Upload -->
   <div id="drop">
@@ -211,6 +216,7 @@ select{
   </div>
 
   <p class="footer-note">Die Rechnung wird nur auf diesem Gerät gelesen und nicht übertragen.</p>
+</div>
 </div>
 </div>
 
@@ -532,7 +538,7 @@ $("btn_reset").addEventListener("click", ()=>{
   parsed = null; fi.value = "";
   $("step2").style.display="none"; $("step3").style.display="none";
   $("filename").style.display="none";
-  window.scrollTo({top:0,behavior:"smooth"});
+  document.querySelector(".wrap-scroll").scrollTo({top:0,behavior:"smooth"});
 });
 </script>
 </body>

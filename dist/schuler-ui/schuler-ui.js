@@ -141,8 +141,18 @@
     }).join('');
   }
 
-  /** App-Name mit Pfeil; der Tipp öffnet die Liste aller Apps. */
+  /**
+   * App-Name in der Kopfzeile. Seit 13.11.2026 nur noch Titel: Auf dem iPad öffnet ein Link nie die
+   * App vom Home-Bildschirm, sondern ein Browserfenster in der App (Jan: dann ohne App-Wechsel).
+   */
   function appKnopf(hier, optionen) {
+    optionen = optionen || {};
+    var app = APPS.filter(function (a) { return a.id === hier; })[0] || { name: optionen.name || hier };
+    return el('<div class="sui-anker"><span class="sui-app sui-app-titel">' + esc(optionen.name || app.name) + '</span></div>');
+  }
+
+  /** Früherer App-Wechsel mit Liste aller Apps; derzeit nicht im Einsatz (siehe appKnopf). */
+  function appWechsler(hier, optionen) {
     optionen = optionen || {};
     var app = APPS.filter(function (a) { return a.id === hier; })[0] || { name: optionen.name || hier };
     var anker = el('<div class="sui-anker"><button type="button" class="sui-app" aria-haspopup="true" aria-expanded="false">' + esc(optionen.name || app.name) + icon('runter') + '</button>' +
